@@ -83,6 +83,7 @@ class Adapter(dl.BaseModelAdapter):
             logger.warning(f'Model path ({model_filepath}) not found! loading default model weights')
             url = 'https://github.com/ultralytics/assets/releases/download/v8.2.0/' + model_filename
             model = YOLO(url)  # pass any model type
+        self.confidence_threshold = self.configuration.get('conf_thres', 0.25)
         self.model = model
 
     def prepare_item_func(self, item):
@@ -116,9 +117,11 @@ class Adapter(dl.BaseModelAdapter):
                 results = self.model.predict(source=stream, save=False, save_txt=False)  # save predictions as labels
                 for i_img, res in enumerate(results):  # per image
                     for d in reversed(res.boxes):
-                        cls, conf = d.cls.squeeze(), d.conf.squeeze()
-                        c = int(cls)
-                        label = res.names[c]
+                        cls = int(d.cls.squeeze())
+                        conf = float(d.conf.squeeze())
+                        if conf < self.confidence_threshold:
+                            continue
+                        label = res.names[cls]
                         xyxy = d.xyxy.squeeze()
                         image_annotations.add(annotation_definition=dl.Box(left=float(xyxy[0]),
                                                                            top=float(xyxy[1]),
@@ -128,7 +131,7 @@ class Adapter(dl.BaseModelAdapter):
                                                                            ),
                                               model_info={'name': self.model_entity.name,
                                                           'model_id': self.model_entity.id,
-                                                          'confidence': float(conf)})
+                                                          'confidence': conf})
                 batch_annotations.append(image_annotations)
             if 'video' in item.mimetype:
                 image_annotations = item.annotations.builder()
