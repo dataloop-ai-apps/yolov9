@@ -135,7 +135,11 @@ class Adapter(dl.BaseModelAdapter):
                 batch_annotations.append(image_annotations)
             if 'video' in item.mimetype:
                 image_annotations = item.annotations.builder()
-                results = self.model.track(source=stream, tracker='botsort.yaml', verbose=False, save=False,
+                results = self.model.track(source=stream,
+                                           tracker='botsort.yaml',
+                                           stream=True,
+                                           verbose=False,
+                                           save=False,
                                            save_txt=False)
                 for idx, frame in enumerate(results):
                     for box in frame.boxes:
