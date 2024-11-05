@@ -9,7 +9,7 @@
     "License": "GPL 3.0",
     "Category": "Model",
     "Computer Vision": "Object Detection",
-    "Media Type": ["Image"],
+    "Media Type": ["Image", "Video"],
     "Deployed By": "Dataloop"
   },
   "codebase": {
