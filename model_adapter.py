@@ -87,44 +87,73 @@ class Adapter(dl.BaseModelAdapter):
 
     def prepare_item_func(self, item):
         filename = item.download(overwrite=True)
-        image = Image.open(filename)
-        # Check if the image has EXIF data
-        if hasattr(image, '_getexif'):
-            exif_data = image._getexif()
-            # Get the EXIF orientation tag (if available)
-            if exif_data is not None:
-                orientation = exif_data.get(0x0112)
-                if orientation is not None:
-                    # Rotate the image based on the orientation tag
-                    if orientation == 3:
-                        image = image.rotate(180, expand=True)
-                    elif orientation == 6:
-                        image = image.rotate(270, expand=True)
-                    elif orientation == 8:
-                        image = image.rotate(90, expand=True)
-        image = image.convert('RGB')
-        return image
+        if 'image' in item.mimetype:
+            data = Image.open(filename)
+            # Check if the image has EXIF data
+            if hasattr(data, '_getexif'):
+                exif_data = data._getexif()
+                # Get the EXIF orientation tag (if available)
+                if exif_data is not None:
+                    orientation = exif_data.get(0x0112)
+                    if orientation is not None:
+                        # Rotate the image based on the orientation tag
+                        if orientation == 3:
+                            data = data.rotate(180, expand=True)
+                        elif orientation == 6:
+                            data = data.rotate(270, expand=True)
+                        elif orientation == 8:
+                            data = data.rotate(90, expand=True)
+            data = data.convert('RGB')
+        else:
+            data = filename
+        return data, item
 
     def predict(self, batch, **kwargs):
-        results = self.model.predict(source=batch, save=False, save_txt=False)  # save predictions as labels
         batch_annotations = list()
-        for i_img, res in enumerate(results):  # per image
-            image_annotations = dl.AnnotationCollection()
-            for d in reversed(res.boxes):
-                cls, conf = d.cls.squeeze(), d.conf.squeeze()
-                c = int(cls)
-                label = res.names[c]
-                xyxy = d.xyxy.squeeze()
-                image_annotations.add(annotation_definition=dl.Box(left=float(xyxy[0]),
-                                                                   top=float(xyxy[1]),
-                                                                   right=float(xyxy[2]),
-                                                                   bottom=float(xyxy[3]),
-                                                                   label=label
-                                                                   ),
-                                      model_info={'name': self.model_entity.name,
-                                                  'model_id': self.model_entity.id,
-                                                  'confidence': float(conf)})
-            batch_annotations.append(image_annotations)
+        for stream, item in batch:
+            if 'image' in item.mimetype:
+                image_annotations = dl.AnnotationCollection()
+                results = self.model.predict(source=stream, save=False, save_txt=False)  # save predictions as labels
+                for i_img, res in enumerate(results):  # per image
+                    for d in reversed(res.boxes):
+                        cls, conf = d.cls.squeeze(), d.conf.squeeze()
+                        c = int(cls)
+                        label = res.names[c]
+                        xyxy = d.xyxy.squeeze()
+                        image_annotations.add(annotation_definition=dl.Box(left=float(xyxy[0]),
+                                                                           top=float(xyxy[1]),
+                                                                           right=float(xyxy[2]),
+                                                                           bottom=float(xyxy[3]),
+                                                                           label=label
+                                                                           ),
+                                              model_info={'name': self.model_entity.name,
+                                                          'model_id': self.model_entity.id,
+                                                          'confidence': float(conf)})
+                batch_annotations.append(image_annotations)
+            if 'video' in item.mimetype:
+                image_annotations = item.annotations.builder()
+                results = self.model.track(source=stream, tracker='botsort.yaml', verbose=False, save=False,
+                                           save_txt=False)
+                for idx, frame in enumerate(results):
+                    for box in frame.boxes:
+                        cls = int(box.cls.squeeze())
+                        conf = float(box.conf.squeeze())
+                        object_id = int(box.id.squeeze())
+                        label = self.model.names[cls]
+                        xyxy = box.xyxy.squeeze()
+                        image_annotations.add(annotation_definition=dl.Box(left=float(xyxy[0]),
+                                                                           top=float(xyxy[1]),
+                                                                           right=float(xyxy[2]),
+                                                                           bottom=float(xyxy[3]),
+                                                                           label=label
+                                                                           ),
+                                              model_info={'name': self.model_entity.name,
+                                                          'model_id': self.model_entity.id,
+                                                          'confidence': conf},
+                                              object_id=object_id,
+                                              frame_num=idx
+                                              )
+                batch_annotations.append(image_annotations)
         return batch_annotations
 
     @staticmethod
@@ -249,3 +278,11 @@ class Adapter(dl.BaseModelAdapter):
                          workers=0,
                          imgsz=imgsz,
                          project=project_name)
+
+
+if __name__ == '__main__':
+    model = dl.models.get(model_id='')
+    runner = Adapter(model_entity=model)
+    item1 = dl.items.get(item_id='')
+    item2 = dl.items.get(item_id='')
+    runner.predict_items(items=[item2, item1])
