@@ -143,6 +143,8 @@ class Adapter(dl.BaseModelAdapter):
                                            save_txt=False)
                 for idx, frame in enumerate(results):
                     for box in frame.boxes:
+                        if box.id is None or box.cls is None or box.conf is None or box.xyxy is None:
+                            continue
                         cls = int(box.cls.squeeze())
                         conf = float(box.conf.squeeze())
                         object_id = int(box.id.squeeze())
