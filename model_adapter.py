@@ -136,7 +136,7 @@ class Adapter(dl.BaseModelAdapter):
                                                           'model_id': self.model_entity.id,
                                                           'confidence': conf})
                 batch_annotations.append(image_annotations)
-            if 'video' in item.mimetype:
+            elif 'video' in item.mimetype:
                 image_annotations = item.annotations.builder()
                 results = self.model.track(source=stream,
                                            tracker='botsort.yaml',
@@ -166,6 +166,8 @@ class Adapter(dl.BaseModelAdapter):
                                               frame_num=idx
                                               )
                 batch_annotations.append(image_annotations)
+            else:
+                logger.warning(f'Item {item.id} mimetype is not supported. Skipping item prediction')
         return batch_annotations
 
     @staticmethod
