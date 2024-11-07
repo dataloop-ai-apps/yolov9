@@ -110,11 +110,14 @@ class Adapter(dl.BaseModelAdapter):
         return data, item
 
     def predict(self, batch, **kwargs):
+        device = self.configuration.get('device', None)
+        if device is None:
+            device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         batch_annotations = list()
         for stream, item in batch:
             if 'image' in item.mimetype:
                 image_annotations = dl.AnnotationCollection()
-                results = self.model.predict(source=stream, save=False, save_txt=False)  # save predictions as labels
+                results = self.model.predict(source=stream, save=False, save_txt=False, device=device)  # save predictions as labels
                 for i_img, res in enumerate(results):  # per image
                     for d in reversed(res.boxes):
                         cls = int(d.cls.squeeze())
@@ -133,7 +136,7 @@ class Adapter(dl.BaseModelAdapter):
                                                           'model_id': self.model_entity.id,
                                                           'confidence': conf})
                 batch_annotations.append(image_annotations)
-            if 'video' in item.mimetype:
+            elif 'video' in item.mimetype:
                 image_annotations = item.annotations.builder()
                 results = self.model.track(source=stream,
                                            tracker='botsort.yaml',
@@ -163,6 +166,8 @@ class Adapter(dl.BaseModelAdapter):
                                               frame_num=idx
                                               )
                 batch_annotations.append(image_annotations)
+            else:
+                logger.warning(f'Item {item.id} mimetype is not supported. Skipping item prediction')
         return batch_annotations
 
     @staticmethod
