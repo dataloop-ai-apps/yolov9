@@ -1,7 +1,7 @@
 {
   "name": "yolov9",
   "displayName": "YOLOv9",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "scope": "public",
   "description": "YOLOv9 is a real-time object detection model that enhances efficiency and accuracy through innovations like Programmable Gradient Information (PGI) and the Generalized Efficient Layer Aggregation Network (GELAN). It supports various configurations such as YOLOv9c for efficiency and YOLOv9e for maximum accuracy​ .",
   "attributes": {
@@ -15,7 +15,7 @@
   "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/yolov9.git",
-    "gitTag": "0.0.13"
+    "gitTag": "0.0.14"
   },
   "components": {
     "computeConfigs": [
