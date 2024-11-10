@@ -9,7 +9,10 @@
     "License": "GPL 3.0",
     "Category": "Model",
     "Computer Vision": "Object Detection",
-    "Media Type": ["Image", "Video"],
+    "Media Type": [
+      "Image",
+      "Video"
+    ],
     "Deployed By": "Dataloop"
   },
   "codebase": {
@@ -180,7 +183,15 @@
           "imgsz": 640,
           "conf_thres": 0.25,
           "iou_thres": 0.45,
-          "max_det": 1000
+          "max_det": 1000,
+          "botsort_configs": {
+            "track_high_thresh": 0.25,
+            "track_low_thresh": 0.1,
+            "new_track_thresh": 0.5,
+            "track_buffer": 30,
+            "match_thresh": 0.8,
+            "include_untracked": false
+          }
         },
         "inputType": "image",
         "outputType": "box",
@@ -280,7 +291,15 @@
           "imgsz": 640,
           "conf_thres": 0.25,
           "iou_thres": 0.45,
-          "max_det": 1000
+          "max_det": 1000,
+          "botsort_configs": {
+            "track_high_thresh": 0.25,
+            "track_low_thresh": 0.1,
+            "new_track_thresh": 0.5,
+            "track_buffer": 30,
+            "match_thresh": 0.8,
+            "include_untracked": false
+          }
         },
         "inputType": "image",
         "outputType": "box",
