@@ -1,6 +1,6 @@
 from ultralytics import YOLO
 from PIL import Image
-
+import random
 import dtlpy as dl
 import logging
 import torch
@@ -75,6 +75,7 @@ class Adapter(dl.BaseModelAdapter):
 
     def load(self, local_path, **kwargs):
         model_filename = self.configuration.get('weights_filename', 'yolov9e.pt')
+        device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         model_filepath = os.path.join(local_path, model_filename)
 
         if os.path.isfile(model_filepath):
@@ -83,8 +84,27 @@ class Adapter(dl.BaseModelAdapter):
             logger.warning(f'Model path ({model_filepath}) not found! loading default model weights')
             url = 'https://github.com/ultralytics/assets/releases/download/v8.2.0/' + model_filename
             model = YOLO(url)  # pass any model type
+        model.to(device=device)
         self.confidence_threshold = self.configuration.get('conf_thres', 0.25)
         self.model = model
+        self.update_tracker_configs()
+
+    def update_tracker_configs(self):
+        botsort_configs = self.configuration.get('botsort_configs', dict())
+        # Load the YAML file
+        with open('botsort.yaml', 'r') as file:
+            data = yaml.safe_load(file)
+
+        # Edit existing keys/values
+        data['track_high_thresh'] = botsort_configs.get('track_high_thresh', 0.25)
+        data['track_low_thresh'] = botsort_configs.get('track_low_thresh', 0.1)
+        data['new_track_thresh'] = botsort_configs.get('new_track_thresh', 0.5)
+        data['track_buffer'] = botsort_configs.get('track_buffer', 30)
+        data['match_thresh'] = botsort_configs.get('match_thresh', 0.8)
+
+        # Write the updated data back to a YAML file
+        with open('custom_botsort.yaml', 'w') as file:
+            yaml.safe_dump(data, file, default_flow_style=False)
 
     def prepare_item_func(self, item):
         filename = item.download(overwrite=True)
@@ -110,12 +130,15 @@ class Adapter(dl.BaseModelAdapter):
         return data, item
 
     def predict(self, batch, **kwargs):
+        include_untracked = self.configuration.get('botsort_configs', dict()).get('include_untracked', False)
         batch_annotations = list()
         for stream, item in batch:
+            track_ids = list(range(1000, 10001))
             if 'image' in item.mimetype:
                 image_annotations = dl.AnnotationCollection()
                 results = self.model.predict(source=stream, save=False, save_txt=False)  # save predictions as labels
                 for i_img, res in enumerate(results):  # per image
+
                     for d in reversed(res.boxes):
                         cls = int(d.cls.squeeze())
                         conf = float(d.conf.squeeze())
@@ -134,20 +157,27 @@ class Adapter(dl.BaseModelAdapter):
                                                           'confidence': conf})
                 batch_annotations.append(image_annotations)
             if 'video' in item.mimetype:
+                # TODO: Move up
                 image_annotations = item.annotations.builder()
                 results = self.model.track(source=stream,
-                                           tracker='botsort.yaml',
+                                           tracker='custom_botsort.yaml',
                                            stream=True,
-                                           verbose=False,
+                                           verbose=True,
                                            save=False,
                                            save_txt=False)
                 for idx, frame in enumerate(results):
                     for box in frame.boxes:
-                        if box.id is None or box.cls is None or box.conf is None or box.xyxy is None:
-                            continue
+                        if box.is_track is False:
+                            if include_untracked is False:
+                                continue
+                            else:
+                                # Guarantee unique object_id
+                                object_id = track_ids.pop()
+                                # object_id = random.randint(1000, 10000)
+                        else:
+                            object_id = int(box.id.squeeze())
                         cls = int(box.cls.squeeze())
                         conf = float(box.conf.squeeze())
-                        object_id = int(box.id.squeeze())
                         label = self.model.names[cls]
                         xyxy = box.xyxy.squeeze()
                         image_annotations.add(annotation_definition=dl.Box(left=float(xyxy[0]),
@@ -293,5 +323,4 @@ if __name__ == '__main__':
     model = dl.models.get(model_id='')
     runner = Adapter(model_entity=model)
     item1 = dl.items.get(item_id='')
-    item2 = dl.items.get(item_id='')
-    runner.predict_items(items=[item2, item1])
+    runner.predict_items(items=[item1])
