@@ -156,7 +156,7 @@ class Adapter(dl.BaseModelAdapter):
                                                           'model_id': self.model_entity.id,
                                                           'confidence': conf})
                 batch_annotations.append(image_annotations)
-            if 'video' in item.mimetype:
+            elif 'video' in item.mimetype:
                 image_annotations = item.annotations.builder()
                 results = self.model.track(source=stream,
                                            tracker='custom_botsort.yaml',
@@ -192,6 +192,8 @@ class Adapter(dl.BaseModelAdapter):
                                               frame_num=idx
                                               )
                 batch_annotations.append(image_annotations)
+            else:
+                logger.warning(f'Item {item.id} mimetype is not supported. Skipping item prediction')
         return batch_annotations
 
     @staticmethod
@@ -216,12 +218,9 @@ class Adapter(dl.BaseModelAdapter):
         start_epoch = self.configuration.get('start_epoch', 0)
         batch_size = self.configuration.get('batch_size', 2)
         imgsz = self.configuration.get('imgsz', 640)
-        device = self.configuration.get('device', None)
         augment = self.configuration.get('augment', True)
         yaml_config = self.configuration.get('yaml_config', dict())
         resume = start_epoch > 0
-        if device is None:
-            device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
         project_name = os.path.dirname(output_path)
         name = os.path.basename(output_path)
@@ -310,7 +309,6 @@ class Adapter(dl.BaseModelAdapter):
                          resume=resume,
                          epochs=epochs,
                          batch=batch_size,
-                         device=device,
                          augment=augment,
                          name=name,
                          workers=0,
