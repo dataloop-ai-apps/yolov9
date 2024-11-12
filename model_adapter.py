@@ -157,7 +157,6 @@ class Adapter(dl.BaseModelAdapter):
                                                           'confidence': conf})
                 batch_annotations.append(image_annotations)
             if 'video' in item.mimetype:
-                # TODO: Move up
                 image_annotations = item.annotations.builder()
                 results = self.model.track(source=stream,
                                            tracker='custom_botsort.yaml',
