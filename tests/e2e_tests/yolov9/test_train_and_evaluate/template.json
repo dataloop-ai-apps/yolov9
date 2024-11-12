@@ -78,7 +78,7 @@
     }
   ],
   "description": "",
-  "name": "YOLOv8-TnE",
+  "name": "YOLOv9-TnE",
   "templateKind": "org",
   "nodes": [
     {
