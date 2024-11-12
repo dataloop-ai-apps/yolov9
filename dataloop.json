@@ -18,7 +18,7 @@
   "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/yolov9.git",
-    "gitTag": "0.0.14"
+    "gitTag": "0.0.16"
   },
   "components": {
     "computeConfigs": [
