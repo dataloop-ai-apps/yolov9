@@ -27,7 +27,7 @@
         "runtime": {
           "podType": "regular-xs",
           "concurrency": 1,
-          "runnerImage": "ultralytics/ultralytics:8.2.26-python",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.16",
           "autoscaler": {
             "type": "rabbitmq",
             "minReplicas": 0,
@@ -41,7 +41,7 @@
         "runtime": {
           "podType": "gpu-t4",
           "concurrency": 1,
-          "runnerImage": "gcr.io/viewo-g/piper/agent/gpu/yolov9:0.0.1",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.16",
           "autoscaler": {
             "type": "rabbitmq",
             "minReplicas": 0,
