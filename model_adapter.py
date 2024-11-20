@@ -75,7 +75,7 @@ class Adapter(dl.BaseModelAdapter):
     def load(self, local_path, **kwargs):
         model_filename = self.configuration.get('weights_filename', 'yolov9e.pt')
         device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-        model_filepath = os.path.join(local_path, model_filename)
+        model_filepath = os.path.normpath(os.path.join(local_path, model_filename))
 
         if os.path.isfile(model_filepath):
             model = YOLO(model_filepath)  # pass any model type
