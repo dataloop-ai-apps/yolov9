@@ -304,7 +304,7 @@
           }
         },
         "inputType": "image",
-        "outputType": "segmentation",
+        "outputType": "segment",
         "description": "YOLOv9e is designed to be a larger model compared to YOLOv9c, with an emphasis on achieving higher accuracy.",
         "labels": [
           "person",
