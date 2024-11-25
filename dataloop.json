@@ -18,7 +18,7 @@
   "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/yolov9.git",
-    "gitTag": "0.0.17"
+    "gitTag": "0.0.11"
   },
   "components": {
     "computeConfigs": [
@@ -27,7 +27,7 @@
         "runtime": {
           "podType": "regular-xs",
           "concurrency": 1,
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.16",
+          "runnerImage": "ultralytics/ultralytics:8.2.26-python",
           "autoscaler": {
             "type": "rabbitmq",
             "minReplicas": 0,
@@ -41,7 +41,7 @@
         "runtime": {
           "podType": "gpu-t4",
           "concurrency": 1,
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.16",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/gpu/yolov9:0.0.1",
           "autoscaler": {
             "type": "rabbitmq",
             "minReplicas": 0,
@@ -178,6 +178,7 @@
         "status": "pre-trained",
         "configuration": {
           "weights_filename": "yolov9c.pt",
+          "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9c.pt",
           "epochs": 10,
           "batch_size": 4,
           "imgsz": 640,
@@ -280,12 +281,13 @@
         ]
       },
       {
-        "name": "yolov9e",
+        "name": "yolov9c-seg",
         "moduleName": "yolov9-module",
         "scope": "project",
         "status": "pre-trained",
         "configuration": {
-          "weights_filename": "yolov9e.pt",
+          "weights_filename": "yolov9c-seg.pt",
+          "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9c-seg.pt",
           "epochs": 10,
           "batch_size": 4,
           "imgsz": 640,
@@ -302,7 +304,7 @@
           }
         },
         "inputType": "image",
-        "outputType": "box",
+        "outputType": "segmentation",
         "description": "YOLOv9e is designed to be a larger model compared to YOLOv9c, with an emphasis on achieving higher accuracy.",
         "labels": [
           "person",

@@ -38,12 +38,13 @@ class Adapter(dl.BaseModelAdapter):
 
         for subset, filters_dict in subsets.items():
             filters = dl.Filters(custom_filter=filters_dict)
-            filters.add_join(field='type', values='box')
+            filters.add_join(field='type', values=['box', 'seg'], operator=dl.FiltersOperations.IN)
             filters.page_size = 0
             pages = self.model_entity.dataset.items.list(filters=filters)
             if pages.items_count == 0:
                 raise ValueError(
-                    f'Could find box annotations in subset {subset}. Cannot train without annotation in the data subsets')
+                    f"Couldn't find box or segment annotations in subset {subset}. "
+                    f"Cannot train without annotation in the data subsets")
 
         #########
         # Paths #
@@ -73,12 +74,14 @@ class Adapter(dl.BaseModelAdapter):
                                     from_format='dataloop')
 
     def load(self, local_path, **kwargs):
-        model_filename = self.configuration.get('weights_filename', 'yolov9e.pt')
+        model_filename = self.configuration.get('weights_filename', 'yolov9c.pt')
         device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         model_filepath = os.path.normpath(os.path.join(local_path, model_filename))
 
         if os.path.isfile(model_filepath):
             model = YOLO(model_filepath)  # pass any model type
+        elif os.path.isfile('/tmp/app/weights/' + model_filename):
+            model = YOLO('/tmp/app/weights/' + model_filename)
         else:
             logger.warning(f'Model path ({model_filepath}) not found! loading default model weights')
             url = 'https://github.com/ultralytics/assets/releases/download/v8.2.0/' + model_filename
@@ -138,23 +141,34 @@ class Adapter(dl.BaseModelAdapter):
                 image_annotations = dl.AnnotationCollection()
                 results = self.model.predict(source=stream, save=False, save_txt=False)  # save predictions as labels
                 for i_img, res in enumerate(results):  # per image
-
-                    for d in reversed(res.boxes):
-                        cls = int(d.cls.squeeze())
-                        conf = float(d.conf.squeeze())
-                        if conf < self.confidence_threshold:
-                            continue
-                        label = res.names[cls]
-                        xyxy = d.xyxy.squeeze()
-                        image_annotations.add(annotation_definition=dl.Box(left=float(xyxy[0]),
-                                                                           top=float(xyxy[1]),
-                                                                           right=float(xyxy[2]),
-                                                                           bottom=float(xyxy[3]),
-                                                                           label=label
-                                                                           ),
-                                              model_info={'name': self.model_entity.name,
-                                                          'model_id': self.model_entity.id,
-                                                          'confidence': conf})
+                    if res.masks:  # Segmentation only?
+                        for box, mask in zip(reversed(res.boxes), reversed(res.masks)):
+                            cls, conf = box.cls.squeeze(), box.conf.squeeze()
+                            c = int(cls)
+                            label = res.names[c]
+                            if label not in list(self.configuration.get("label_to_id_map", {}).keys()):
+                                logger.error(f"Predict label {label} is not among the models' labels.")
+                            image_annotations.add(annotation_definition=dl.Polygon(geo=mask.xy[0], label=label),
+                                                  model_info={'name': self.model_entity.name,
+                                                              'model_id': self.model_entity.id,
+                                                              'confidence': float(conf)})
+                    else:
+                        for d in reversed(res.boxes):
+                            cls = int(d.cls.squeeze())
+                            conf = float(d.conf.squeeze())
+                            if conf < self.confidence_threshold:
+                                continue
+                            label = res.names[cls]
+                            xyxy = d.xyxy.squeeze()
+                            image_annotations.add(annotation_definition=dl.Box(left=float(xyxy[0]),
+                                                                               top=float(xyxy[1]),
+                                                                               right=float(xyxy[2]),
+                                                                               bottom=float(xyxy[3]),
+                                                                               label=label
+                                                                               ),
+                                                  model_info={'name': self.model_entity.name,
+                                                              'model_id': self.model_entity.id,
+                                                              'confidence': conf})
                 batch_annotations.append(image_annotations)
             if 'video' in item.mimetype:
                 image_annotations = item.annotations.builder()
