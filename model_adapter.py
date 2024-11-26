@@ -38,7 +38,10 @@ class Adapter(dl.BaseModelAdapter):
 
         for subset, filters_dict in subsets.items():
             filters = dl.Filters(custom_filter=filters_dict)
-            filters.add_join(field='type', values=['box', 'segment'], operator=dl.FiltersOperations.IN)
+            if self.model_entity.output_type == 'box':
+                filters.add_join(field='type', values='box')
+            elif self.model_entity.output_type == 'segment':
+                filters.add_join(field='type', values='segment')
             filters.page_size = 0
             pages = self.model_entity.dataset.items.list(filters=filters)
             if pages.items_count == 0:
@@ -141,8 +144,7 @@ class Adapter(dl.BaseModelAdapter):
                 image_annotations = dl.AnnotationCollection()
                 results = self.model.predict(source=stream, save=False, save_txt=False)  # save predictions as labels
                 for i_img, res in enumerate(results):  # per image
-                    # Segmentation
-                    if res.masks:
+                    if self.model_entity.output_type == 'segment':
                         for box, mask in zip(reversed(res.boxes), reversed(res.masks)):
                             cls, conf = box.cls.squeeze(), box.conf.squeeze()
                             c = int(cls)
@@ -153,8 +155,7 @@ class Adapter(dl.BaseModelAdapter):
                                                   model_info={'name': self.model_entity.name,
                                                               'model_id': self.model_entity.id,
                                                               'confidence': float(conf)})
-                    # Box
-                    else:
+                    elif self.model_entity.output_type == 'box':
                         for d in reversed(res.boxes):
                             cls = int(d.cls.squeeze())
                             conf = float(d.conf.squeeze())

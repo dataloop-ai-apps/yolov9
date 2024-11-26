@@ -9,9 +9,11 @@ RUN mkdir -p /tmp/app/weights && chown 1000:1000 /tmp/app/weights
 RUN wget -O /tmp/app/weights/yolov9c-seg.pt https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9c-seg.pt
 RUN wget -O /tmp/app/weights/yolov9c.pt https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9c.pt
 
+USER 1000
+
 RUN pip install --user \
     ultralytics \
     pyyaml
 
-# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.17 -f Dockerfile .
-# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.17 bash
+# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.21 -f Dockerfile .
+# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.21 bash
