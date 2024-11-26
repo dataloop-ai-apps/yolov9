@@ -13,5 +13,5 @@ RUN pip install --user \
     ultralytics \
     pyyaml
 
-# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.20 -f Dockerfile .
-# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.20 bash
+# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.17 -f Dockerfile .
+# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.17 bash
