@@ -40,8 +40,8 @@ class Adapter(dl.BaseModelAdapter):
             filters = dl.Filters(custom_filter=filters_dict)
             if self.model_entity.output_type == 'box':
                 filters.add_join(field='type', values='box')
-            elif self.model_entity.output_type == 'segment':
-                filters.add_join(field='type', values='segment')
+            elif self.model_entity.output_type in ['segment', 'binary']:
+                filters.add_join(field='type', values=['segment', 'binary'], operator=dl.FILTERS_OPERATIONS_IN)
             filters.page_size = 0
             pages = self.model_entity.dataset.items.list(filters=filters)
             if pages.items_count == 0:
@@ -152,6 +152,17 @@ class Adapter(dl.BaseModelAdapter):
                             if label not in list(self.configuration.get("label_to_id_map", {}).keys()):
                                 logger.error(f"Predict label {label} is not among the models' labels.")
                             image_annotations.add(annotation_definition=dl.Polygon(geo=mask.xy[0], label=label),
+                                                  model_info={'name': self.model_entity.name,
+                                                              'model_id': self.model_entity.id,
+                                                              'confidence': float(conf)})
+                    elif self.model_entity.output_type == 'binary' and res.masks:
+                        for box, mask in zip(reversed(res.boxes), reversed(res.masks)):
+                            cls, conf = box.cls.squeeze(), box.conf.squeeze()
+                            c = int(cls)
+                            label = res.names[c]
+                            if label not in list(self.configuration.get("label_to_id_map", {}).keys()):
+                                logger.error(f"Predict label {label} is not among the models' labels.")
+                            image_annotations.add(annotation_definition=dl.Segmentation(geo=mask.xy[0], label=label),
                                                   model_info={'name': self.model_entity.name,
                                                               'model_id': self.model_entity.id,
                                                               'confidence': float(conf)})
