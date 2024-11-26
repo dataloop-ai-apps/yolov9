@@ -86,8 +86,8 @@ class Adapter(dl.BaseModelAdapter):
         elif os.path.isfile('/tmp/app/weights/' + model_filename):
             model = YOLO('/tmp/app/weights/' + model_filename)
         else:
-            logger.warning(f'Model path ({model_filepath}) not found! loading default model weights')
-            url = 'https://github.com/ultralytics/assets/releases/download/v8.2.0/' + model_filename
+            logger.warning(f'Model path ({model_filepath}) not found! Loading default model weights.')
+            url = self.configuration.get('weights_url')
             model = YOLO(url)  # pass any model type
         model.to(device=device)
         logger.info(f"Model loaded successfully, Device: {model.device}")
@@ -152,17 +152,6 @@ class Adapter(dl.BaseModelAdapter):
                             if label not in list(self.configuration.get("label_to_id_map", {}).keys()):
                                 logger.error(f"Predict label {label} is not among the models' labels.")
                             image_annotations.add(annotation_definition=dl.Polygon(geo=mask.xy[0], label=label),
-                                                  model_info={'name': self.model_entity.name,
-                                                              'model_id': self.model_entity.id,
-                                                              'confidence': float(conf)})
-                    elif self.model_entity.output_type == 'binary' and res.masks:
-                        for box, mask in zip(reversed(res.boxes), reversed(res.masks)):
-                            cls, conf = box.cls.squeeze(), box.conf.squeeze()
-                            c = int(cls)
-                            label = res.names[c]
-                            if label not in list(self.configuration.get("label_to_id_map", {}).keys()):
-                                logger.error(f"Predict label {label} is not among the models' labels.")
-                            image_annotations.add(annotation_definition=dl.Segmentation(geo=mask.xy[0], label=label),
                                                   model_info={'name': self.model_entity.name,
                                                               'model_id': self.model_entity.id,
                                                               'confidence': float(conf)})
