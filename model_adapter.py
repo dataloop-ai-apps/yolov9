@@ -144,7 +144,7 @@ class Adapter(dl.BaseModelAdapter):
                 image_annotations = dl.AnnotationCollection()
                 results = self.model.predict(source=stream, save=False, save_txt=False)  # save predictions as labels
                 for i_img, res in enumerate(results):  # per image
-                    if self.model_entity.output_type == 'segment':
+                    if self.model_entity.output_type == 'segment' and res.masks:
                         for box, mask in zip(reversed(res.boxes), reversed(res.masks)):
                             cls, conf = box.cls.squeeze(), box.conf.squeeze()
                             c = int(cls)
