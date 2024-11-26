@@ -18,7 +18,7 @@
   "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/yolov9.git",
-    "gitTag": "0.0.11"
+    "gitTag": "0.0.17"
   },
   "components": {
     "computeConfigs": [
@@ -305,7 +305,7 @@
         },
         "inputType": "image",
         "outputType": "segment",
-        "description": "YOLOv9e is designed to be a larger model compared to YOLOv9c, with an emphasis on achieving higher accuracy.",
+        "description": "YOLOv9c is optimized for efficiency, operating with fewer parameters and less computational demand compared to its predecessors.",
         "labels": [
           "person",
           "bicycle",
