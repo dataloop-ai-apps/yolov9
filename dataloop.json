@@ -5,15 +5,7 @@
   "scope": "public",
   "description": "YOLOv9 is a real-time object detection model that enhances efficiency and accuracy through innovations like Programmable Gradient Information (PGI) and the Generalized Efficient Layer Aggregation Network (GELAN). It supports various configurations such as YOLOv9c for efficiency and YOLOv9e for maximum accuracy​ .",
   "attributes": {
-    "Provider": "Ultralytics",
-    "License": "GPL 3.0",
-    "Category": "Model",
-    "Computer Vision": "Object Detection",
-    "Media Type": [
-      "Image",
-      "Video"
-    ],
-    "Deployed By": "Dataloop"
+    "License": "GPL 3.0"
   },
   "codebase": {
     "type": "git",
