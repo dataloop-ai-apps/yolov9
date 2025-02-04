@@ -8,6 +8,7 @@ import os
 import yaml
 import shutil
 import numpy as np
+from dtlpyconverters import services, yolo_converters
 
 logger = logging.getLogger('YOLOv9Adapter')
 
@@ -31,50 +32,78 @@ class Adapter(dl.BaseModelAdapter):
         subsets = self.model_entity.metadata.get("system", dict()).get("subsets", None)
         if 'train' not in subsets:
             raise ValueError(
-                'Couldnt find train set. Yolov9 requires train and validation set for training. Add a train set DQL filter in the dl.Model metadata')
+                'Couldnt find train set. Yolo requires train and validation set for training. Add a train set DQL filter in the dl.Model metadata')
         if 'validation' not in subsets:
             raise ValueError(
-                'Couldnt find validation set. Yolov9 requires train and validation set for training. Add a validation set DQL filter in the dl.Model metadata')
+                'Couldnt find validation set. Yolo requires train and validation set for training. Add a validation set DQL filter in the dl.Model metadata')
+
+        if len(self.model_entity.labels) == 0:
+            raise ValueError(
+                'model.labels is empty. Model entity must have labels')
+
+        ##########################
+        # Convert to YOLO Format #
+        ##########################
+
+        model_output_type = self.model_entity.output_type
+        segmentation_types = ["segment", "binary"]
+        if model_output_type in segmentation_types:
+            values = segmentation_types
+        else:
+            values = [model_output_type]
 
         for subset, filters_dict in subsets.items():
             filters = dl.Filters(custom_filter=filters_dict)
-            if self.model_entity.output_type == 'box':
-                filters.add_join(field='type', values='box')
-            elif self.model_entity.output_type in ['segment', 'binary']:
-                filters.add_join(field='type', values=['segment', 'binary'], operator=dl.FILTERS_OPERATIONS_IN)
+            filters.add_join(field='type', values=values, operator=dl.FILTERS_OPERATIONS_IN)
             filters.page_size = 0
             pages = self.model_entity.dataset.items.list(filters=filters)
             if pages.items_count == 0:
                 raise ValueError(
-                    f"Couldn't find box or segment annotations in subset {subset}. "
-                    f"Cannot train without annotation in the data subsets")
+                    f'Could find box annotations in subset {subset}. Cannot train without annotation in the data subsets')
 
-        #########
-        # Paths #
-        #########
+        self.dtlpy_to_yolo(input_path=data_path, output_path=data_path, model_entity=self.model_entity)
 
-        train_path = os.path.join(data_path, 'train', 'json')
-        validation_path = os.path.join(data_path, 'validation', 'json')
-        label_to_id_map = self.model_entity.label_to_id_map
+        # by subsets
+        # https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data#13-organize-directories
+        # https://docs.ultralytics.com/datasets/
 
-        #################
-        # Convert Train #
-        #################
-        converter = dl.utilities.converter.Converter()
-        converter.labels = label_to_id_map
-        converter.convert_directory(local_path=train_path,
-                                    dataset=self.model_entity.dataset,
-                                    to_format='yolo',
-                                    from_format='dataloop')
-        ######################
-        # Convert Validation #
-        ######################
-        converter = dl.utilities.converter.Converter()
-        converter.labels = label_to_id_map
-        converter.convert_directory(local_path=validation_path,
-                                    dataset=self.model_entity.dataset,
-                                    to_format='yolo',
-                                    from_format='dataloop')
+        for subset_name in self.model_entity.metadata.get('system', {}).get("subsets", {}):
+            src_images_path = os.path.join(data_path, subset_name, 'items')
+            dst_images_path = os.path.join(data_path, subset_name, 'images')
+            self.copy_files(src_images_path, dst_images_path)
+
+            src_labels_path = os.path.join(data_path, 'labels', subset_name, 'annotations')
+            dst_labels_path = os.path.join(data_path, subset_name, 'labels')
+            self.copy_files(src_labels_path, dst_labels_path)
+
+    def dtlpy_to_yolo(self, input_path, output_path, model_entity: dl.Model):
+        default_train_path = os.path.join(input_path, 'train', 'json')
+        default_validation_path = os.path.join(input_path, 'validation', 'json')
+
+        model_entity.dataset.instance_map = model_entity.label_to_id_map
+
+        # Convert train and validations sets to yolo format using dtlpy converters
+        self.convert_dataset_yolo(input_path=default_train_path,
+                                  output_path=os.path.join(output_path, 'labels', 'train'),
+                                  dataset=model_entity.dataset)
+        self.convert_dataset_yolo(input_path=default_validation_path,
+                                  output_path=os.path.join(output_path, 'labels', 'validation'),
+                                  dataset=model_entity.dataset)
+
+    @staticmethod
+    def convert_dataset_yolo(output_path, dataset, input_path=None):
+        conv = yolo_converters.DataloopToYolo(output_annotations_path=output_path,
+                                              input_annotations_path=input_path,
+                                              download_items=False,
+                                              download_annotations=False,
+                                              dataset=dataset)
+
+        yolo_converter_services = services.converters_service.DataloopConverters()
+        loop = yolo_converter_services._get_event_loop()
+        try:
+            loop.run_until_complete(conv.convert_dataset())
+        except Exception as e:
+            raise e
 
     def load(self, local_path, **kwargs):
         model_filename = self.configuration.get('weights_filename', 'yolov9c.pt')
@@ -82,13 +111,13 @@ class Adapter(dl.BaseModelAdapter):
         model_filepath = os.path.normpath(os.path.join(local_path, model_filename))
 
         if os.path.isfile(model_filepath):
-            model = YOLO(model_filepath)  # pass any model type
+            model = YOLO(model_filepath, verbose=True)  # pass any model type
         elif os.path.isfile('/tmp/app/weights/' + model_filename):
-            model = YOLO('/tmp/app/weights/' + model_filename)
+            model = YOLO('/tmp/app/weights/' + model_filename, verbose=True)
         else:
             logger.warning(f'Model path ({model_filepath}) not found! Loading default model weights.')
             url = self.configuration.get('weights_url')
-            model = YOLO(url)  # pass any model type
+            model = YOLO(url, verbose=True)  # pass any model type
         model.to(device=device)
         logger.info(f"Model loaded successfully, Device: {model.device}")
         self.confidence_threshold = self.configuration.get('conf_thres', 0.25)
