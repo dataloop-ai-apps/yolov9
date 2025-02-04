@@ -13,7 +13,8 @@ USER 1000
 
 RUN pip install --user \
     ultralytics \
-    pyyaml
+    pyyaml \
+    git+https://github.com/dataloop-ai-apps/dtlpy-converters
 
-# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.21 -f Dockerfile .
-# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.21 bash
+# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.24 -f Dockerfile .
+# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/yolov9:0.0.24 bash
